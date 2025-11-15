@@ -44,6 +44,7 @@ htmlcov/
 Thumbs.db
 
 # UV
+uv.lock
 .python-version
 
 # CUDA compiled files

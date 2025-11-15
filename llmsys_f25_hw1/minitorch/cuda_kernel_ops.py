@@ -122,12 +122,26 @@ class CudaKernelOps(TensorOps):
             lib.tensorZip.restype = None
 
             # BEGIN ASSIGN2_2
-            # TODO
-            # 1. Call the tensorZip function implemented in CUDA
-
-            raise NotImplementedError("Zip Function Not Implemented Yet")
+            # 调用 CUDA 实现的 tensorZip 函数
+            lib.tensorZip(
+                out._tensor._storage,                    # out_storage
+                out._tensor._shape.astype(np.int32),     # out_shape
+                out._tensor._strides.astype(np.int32),   # out_strides
+                out.size,                                # out_size
+                len(out.shape),                          # out_shape_size
+                a._tensor._storage,                      # a_storage
+                a._tensor._shape.astype(np.int32),       # a_shape
+                a._tensor._strides.astype(np.int32),     # a_strides
+                a.size,                                  # a_size
+                len(a.shape),                            # a_shape_size
+                b._tensor._storage,                      # b_storage
+                b._tensor._shape.astype(np.int32),       # b_shape
+                b._tensor._strides.astype(np.int32),     # b_strides
+                b.size,                                  # b_size
+                len(b.shape),                            # b_shape_size
+                fn_id,                                   # fn_id
+            )
             # END ASSIGN2_2
-            
             return out
 
         return ret
@@ -162,10 +176,20 @@ class CudaKernelOps(TensorOps):
             lib.tensorReduce.restype = None
 
             # BEGIN ASSIGN2_3
-            # TODO
-            # 1. Call the tensorReduce function implemented in CUDA
-            
-            raise NotImplementedError("Reduce Function Not Implemented Yet")
+            # 调用 CUDA 实现的 tensorReduce 函数
+            lib.tensorReduce(
+                out._tensor._storage,                    # out_storage
+                out._tensor._shape.astype(np.int32),     # out_shape
+                out._tensor._strides.astype(np.int32),   # out_strides
+                out.size,                                # out_size
+                a._tensor._storage,                      # in_storage
+                a._tensor._shape.astype(np.int32),       # in_shape
+                a._tensor._strides.astype(np.int32),     # in_strides
+                dim,                                     # reduce_dim
+                reduce_value,                            # reduce_value
+                len(a.shape),                            # shape_len
+                fn_id,                                   # fn_id
+            )
             # END ASSIGN2_3
             
             return out
@@ -178,9 +202,15 @@ class CudaKernelOps(TensorOps):
         if len(a.shape) == 2:
             a = a.contiguous().view(1, a.shape[0], a.shape[1])
             both_2d += 1
+        else:
+            # 对于 3D 或更高维度，确保是 contiguous 的
+            a = a.contiguous()
         if len(b.shape) == 2:
             b = b.contiguous().view(1, b.shape[0], b.shape[1])
             both_2d += 1
+        else:
+            # 对于 3D 或更高维度，确保是 contiguous 的
+            b = b.contiguous()
         both_2d = both_2d == 2
 
         ls = list(shape_broadcast(a.shape[:-2], b.shape[:-2]))
@@ -230,10 +260,21 @@ class CudaKernelOps(TensorOps):
         assert len(b._tensor._strides) == 3
 
         # BEGIN ASSIGN2_4
-        # TODO
-        # 1. Call the Matmul function implemented in CUDA
-
-        raise NotImplementedError("Matrix Multiply Function Not Implemented Yet")
+        # 调用 CUDA 实现的 MatrixMultiply 函数
+        lib.MatrixMultiply(
+            out._tensor._storage,                    # out_storage
+            out._tensor._shape.astype(np.int32),     # out_shape
+            out._tensor._strides.astype(np.int32),   # out_strides
+            a._tensor._storage,                      # a_storage
+            a._tensor._shape.astype(np.int32),       # a_shape
+            a._tensor._strides.astype(np.int32),     # a_strides
+            b._tensor._storage,                      # b_storage
+            b._tensor._shape.astype(np.int32),       # b_shape
+            b._tensor._strides.astype(np.int32),     # b_strides
+            a.shape[0],                              # batch_size
+            a.shape[1],                              # m (A 的行数)
+            b.shape[2],                              # p (B 的列数)
+        )
         # END ASSIGN2_4
         
         # Undo 3d if we added it.

@@ -49,13 +49,8 @@ def avgpool2d(input: Tensor, kernel: Tuple[int, int]) -> Tensor:
     x, new_height, new_width = tile(input, kernel)
     return x.mean(dim=4).view(batch, channel, new_height, new_width)
 
-if numba.cuda.is_available():
-    # max_reduce = CudaOps.reduce(operators.max, -1e9)
-    from minitorch.cuda_kernel_ops import CudaKernelOps
-    max_reduce = CudaKernelOps.reduce(operators.max, -1e9)
-else:
-    max_reduce = FastOps.reduce(operators.max, -1e9)
-
+from minitorch.cuda_kernel_ops import CudaKernelOps
+max_reduce = CudaKernelOps.reduce(operators.max, -1e9)
 
 def argmax(input: Tensor, dim: int) -> Tensor:
     """
@@ -200,7 +195,7 @@ def one_hot(input: Tensor, num_classes: int) -> Tensor:
 
 def logsumexp(input: Tensor, dim: int) -> Tensor:
     """Calculates logsumexp with logsumexp trick for numerical stability
-    https://en.wikipedia.org/wiki/LogSumExp
+    https://en.wikipedia.org/wiki/LogSumExp#log-sum-exp_trick_for_log-domain_calculations
 
     Args:
         input : The tensor to calculate logsumexp over
@@ -211,7 +206,11 @@ def logsumexp(input: Tensor, dim: int) -> Tensor:
             NOTE: minitorch functions/tensor functions typically keep dimensions if you provide a dimensions.
     """  
     ### BEGIN ASSIGN3_1
-    raise NotImplementedError
+    # LogSumExp trick: log(sum(exp(x))) = max(x) + log(sum(exp(x - max(x))))
+    # This prevents overflow/underflow issues
+    max_val = max(input, dim)  # Get max along dimension
+    # Compute exp(x - max) and sum, then take log and add max back
+    return max_val + (input - max_val).exp().sum(dim=dim).log()
     ### END ASSIGN3_1
 
 
@@ -228,6 +227,20 @@ def softmax_loss(logits: Tensor, target: Tensor) -> Tensor:
     """
     result = None
     ### BEGIN ASSIGN3_1
-    raise NotImplementedError
+    batch_size = logits.shape[0]
+    num_classes = logits.shape[1]
+    
+    # Compute log_softmax using logsumexp for numerical stability
+    # log_softmax(x) = x - logsumexp(x, dim=1)
+    log_sum_exp = logsumexp(logits, dim=1)  # (batch_size, 1)
+    log_softmax = logits - log_sum_exp  # (batch_size, num_classes)
+    
+    # Convert target indices to one-hot encoding
+    # target: (batch_size,) -> one_hot: (batch_size, num_classes)
+    target_one_hot = one_hot(target, num_classes)
+    
+    # Cross entropy loss: -sum(target * log_softmax) for each sample
+    # We multiply element-wise and sum over classes dimension
+    result = -(target_one_hot * log_softmax).sum(dim=1)
     ### END ASSIGN3_1
     return result.view(batch_size, )

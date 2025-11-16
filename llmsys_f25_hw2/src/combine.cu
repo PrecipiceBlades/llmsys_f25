@@ -407,6 +407,8 @@ __global__ void reduceKernel(
         int a_pos = index_to_position(out_index, a_strides, shape_size);
         thread_reduce_val = fn(fn_id, thread_reduce_val, a_storage[a_pos]);
     }
+    // Restore out_index[reduce_dim] to 0 for correct output indexing
+    out_index[reduce_dim] = 0;
     // 将线程的局部归约结果存入 shared memory
     cache[tid] = thread_reduce_val;
     __syncthreads();

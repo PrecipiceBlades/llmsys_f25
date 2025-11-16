@@ -368,6 +368,8 @@ __global__ void reduceKernel(
       int a_pos = index_to_position(out_index, a_strides, shape_size);
       thread_reduce_val = fn(fn_id, thread_reduce_val, a_storage[a_pos]);
   }
+  // Restore out_index[reduce_dim] to 0 for correct output indexing
+  out_index[reduce_dim] = 0;
   // 将线程的局部归约结果存入 shared memory
   cache[tid] = thread_reduce_val;
   __syncthreads();
@@ -778,8 +780,10 @@ void tensorReduce(
     cudaMemcpy(d_a_shape, a_shape, shape_size * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(d_a_strides, a_strides, shape_size * sizeof(int), cudaMemcpyHostToDevice);
     
-    int threadsPerBlock = BASE_THREAD_NUM;
-    int blocksPerGrid = (out_size + threadsPerBlock - 1) / threadsPerBlock;
+    // Launch kernel
+    // Use BLOCK_DIM threads per block for better parallelism in reduction
+    int threadsPerBlock = BLOCK_DIM;  // Use 1024 threads, not BASE_THREAD_NUM (32)
+    int blocksPerGrid = out_size;      // One block per output element
     reduceKernel<<<blocksPerGrid, threadsPerBlock>>>(
         d_out, d_out_shape, d_out_strides, out_size, 
         d_a, d_a_shape, d_a_strides, 
